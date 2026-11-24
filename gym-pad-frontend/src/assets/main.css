@@ -1,0 +1,213 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* ---------- Theme (change these to re-theme the app) ---------- */
+:root {
+  --accent: #fea755;
+  --accent-hover: #fd9a3d;
+  --bg: #ffbc74;
+  --card-bg: #ffffff;
+  --text: #18181b;
+  --muted: #71717a;
+  --border: #d4d4d8;
+  --danger: #c53030;
+  --danger-bg: #fde8e8;
+  --success: #16a34a;
+  --success-dark: #166534;
+  --success-bg: #dcfce7;
+}
+
+body {
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- Page layout ---------- */
+.page {
+  position: relative;
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 2rem 1rem;
+}
+
+.page-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* ---------- Surfaces ---------- */
+.surface {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  padding: 0.6rem 1.1rem;
+  font: inherit;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, filter 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f4f4f5;
+}
+
+/* Small text buttons used on cards (Edit / Delete) */
+.btn-ghost {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  background: transparent;
+  color: var(--muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: #f4f4f5;
+  color: var(--text);
+}
+
+.btn-ghost.danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* ---------- Inputs ---------- */
+.text-input {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.text-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(254, 167, 85, 0.3);
+}
+
+/* ---------- Loading skeletons ---------- */
+.skeleton-line {
+  height: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ececef 25%, #f7f7f8 50%, #ececef 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.skeleton-line.title {
+  width: 40%;
+  height: 1.1rem;
+  margin-top: 0.25rem;
+}
+
+.skeleton-line.short {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line { animation: none; }
+}
+
+/* ---------- Error / empty states ---------- */
+.state-card {
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.state-card h2 {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1.25rem;
+}
+
+.state-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.state-card .btn {
+  margin-top: 1.25rem;
+}
+
+.state-icon {
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff4e8;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.state-card.error .state-icon {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* Inline banner for failed saves/deletes */
+.error-banner {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
