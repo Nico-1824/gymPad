@@ -92,14 +92,16 @@ onMounted(loadWorkouts)
         <AppHeader />
 
         <div class="page-column">
-            <template v-if="loading">
-                <div v-for="n in 3" :key="n" class="surface" aria-hidden="true">
-                    <div class="skeleton-line title"></div>
-                    <div class="skeleton-line"></div>
-                    <div class="skeleton-line short"></div>
+            <div v-if="loading" class="workout-container">
+                <div class="workout-grid">
+                    <div v-for="n in 4" :key="n" class="surface skeleton-card" aria-hidden="true">
+                        <div class="skeleton-line title"></div>
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line short"></div>
+                    </div>
                 </div>
                 <span class="sr-only" role="status">Loading workouts…</span>
-            </template>
+            </div>
 
             <div v-else-if="loadError" class="surface state-card error" role="alert">
                 <div class="state-icon">!</div>
@@ -108,17 +110,17 @@ onMounted(loadWorkouts)
                 <button type="button" class="btn btn-primary" @click="loadWorkouts">Try again</button>
             </div>
 
-            <template v-else>
-                <div class="toolbar">
+            <div class="workout-container" v-else>
+                <div class="toolbar full-row">
                     <h2>Your workouts</h2>
                     <button v-if="!adding" type="button" class="btn btn-primary" @click="startAdding">
                         + New workout
                     </button>
                 </div>
 
-                <p v-if="actionError" class="error-banner" role="alert">{{ actionError }}</p>
+                <p v-if="actionError" class="error-banner full-row" role="alert">{{ actionError }}</p>
 
-                <div v-if="adding" class="surface">
+                <div v-if="adding" class="surface full-row">
                     <NameForm
                         placeholder="Workout name, e.g. Push Day"
                         submit-label="Add workout"
@@ -128,24 +130,26 @@ onMounted(loadWorkouts)
                     />
                 </div>
 
-                <div v-if="workouts.length === 0 && !adding" class="surface state-card">
+                <div v-if="workouts.length === 0 && !adding" class="surface state-card full-row">
                     <div class="state-icon">🏋️</div>
                     <h2>No workouts yet</h2>
                     <p>Create your first workout to start tracking.</p>
                 </div>
 
-                <WorkoutCard
-                    v-for="w in workouts"
-                    :key="w.workout_id"
-                    :workout="w"
-                    :editing="editingId === w.workout_id"
-                    :busy="saving"
-                    @edit="startEditing(w.workout_id)"
-                    @cancel="editingId = null"
-                    @rename="onRename(w, $event)"
-                    @delete="onDelete(w)"
-                />
-            </template>
+                <div v-if="workouts.length" class="workout-grid">
+                    <WorkoutCard
+                        v-for="w in workouts"
+                        :key="w.workout_id"
+                        :workout="w"
+                        :editing="editingId === w.workout_id"
+                        :busy="saving"
+                        @edit="startEditing(w.workout_id)"
+                        @cancel="editingId = null"
+                        @rename="onRename(w, $event)"
+                        @delete="onDelete(w)"
+                    />
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -163,4 +167,57 @@ onMounted(loadWorkouts)
     margin: 0;
     font-size: clamp(1.25rem, 5vw, 1.5rem);
 }
+
+/* The dashboard is wider than the other pages so the grid has room */
+.page-column {
+    max-width: 1100px;
+}
+
+/* Toolbar, banner, form, empty state and card grid stacked and centred */
+.workout-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Toolbar, error banner, add form and empty state: 500px wide, like before */
+.full-row {
+    width: 100%;
+    max-width: 500px;
+}
+
+/*
+ * Cards wrap onto new rows and every row is centred under the toolbar,
+ * including a last row that isn't full.
+ * Cards in the same row stretch to the same height.
+ */
+.workout-grid {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.25rem;
+}
+
+.workout-grid > * {
+    flex: 0 0 13rem; /* fixed card width: 4 per row on a laptop, 3 on a tablet */
+}
+
+/* Phones: two cards per row, filling the width */
+@media (max-width: 480px) {
+    .workout-grid {
+        gap: 1rem;
+    }
+
+    .workout-grid > * {
+        flex-basis: calc(50% - 0.5rem); /* half the row minus half the gap */
+    }
+}
+
+/* Loading placeholders roughly the size of a card */
+.skeleton-card {
+    min-height: 20dvh;
+}
+
 </style>
