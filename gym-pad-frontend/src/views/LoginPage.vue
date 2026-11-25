@@ -9,6 +9,7 @@ const email = ref('')
 const password = ref('')
 const errorMsg = ref('')
 const loading = ref(false)
+const form = ref<HTMLFormElement | null>(null)
 
 async function login() {
   errorMsg.value = ''
@@ -27,9 +28,17 @@ async function login() {
 
 async function signUp() {
   errorMsg.value = ''
+  // The Sign up button isn't a submit button, so the browser doesn't check the
+  // required fields for us. Without this, empty fields reach Supabase and come
+  // back as "Anonymous sign-ins are disabled".
+  if (!form.value?.reportValidity()) return
+
   const { error } = await supabase.auth.signUp({
     email: email.value,
     password: password.value,
+    // Send the confirmation link back to whichever site you signed up on
+    // (localhost or Vercel). That URL must be in Supabase's Redirect URLs list.
+    options: { emailRedirectTo: window.location.origin },
   })
   errorMsg.value = error ? error.message : 'Check your email to confirm your account.'
 }
@@ -42,7 +51,7 @@ async function signUp() {
             <h1>Your gym tracking companion!</h1>
             <p class="subtitle">Login or sign up</p>
         </div>
-        <form @submit.prevent="login">
+        <form ref="form" @submit.prevent="login">
         <div class="fields">
             <input v-model="email" type="email" placeholder="Email" autocomplete="email" required />
             <input
