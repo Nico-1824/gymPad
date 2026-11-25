@@ -65,6 +65,7 @@ header {
     border: 0.1rem solid var(--border);
     border-radius: 0.5rem;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    background: white;
 }
 
 header h1 {
