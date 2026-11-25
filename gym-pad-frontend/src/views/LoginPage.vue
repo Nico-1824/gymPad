@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/util/supabase'
+import AppHeader from '@/components/AppHeader.vue'
 
 const router = useRouter()
 const email = ref('')
@@ -36,42 +37,30 @@ async function signUp() {
 
 <template>
     <div class="main">
-        <header>
-            <h1>GymPad</h1>
-        </header>
+        <AppHeader />
         <div class="card">
             <h1>Your gym tracking companion!</h1>
             <p class="subtitle">Login or sign up</p>
         </div>
         <form @submit.prevent="login">
-        <div>
-            <input v-model="email" type="email" placeholder="Email" required />
-            <input v-model="password" type="password" placeholder="Password" required />
+        <div class="fields">
+            <input v-model="email" type="email" placeholder="Email" autocomplete="email" required />
+            <input
+                v-model="password"
+                type="password"
+                placeholder="Password"
+                autocomplete="current-password"
+                required
+            />
         </div>
-        <button type="submit" :disabled="loading">Log in</button>
-        <button type="button" @click="signUp">Sign up</button>
-        <p v-if="errorMsg">{{ errorMsg }}</p>
+        <button type="submit" class="btn-primary" :disabled="loading">Log in</button>
+        <button type="button" class="btn-secondary" @click="signUp">Sign up</button>
+        <p v-if="errorMsg" class="message">{{ errorMsg }}</p>
         </form>
     </div>
 </template>
 
 <style scoped>
-
-header {
-    position: absolute;
-    top: 1%;
-    left: 1%;
-    font-family: system-ui, -apple-system, sans-serif;
-    border: 0.1rem solid var(--border);
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-    background: white;
-}
-
-header h1 {
-    font-size: 5rem;
-    margin: 1rem;
-}
 
 .main {
   /* Change these variables to re-theme the whole page */
@@ -85,10 +74,14 @@ header h1 {
 
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh; /* iOS: excludes the Safari toolbar */
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 1rem;
+  padding:
+    max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, sans-serif;
@@ -102,6 +95,7 @@ header h1 {
   background: var(--card-bg);
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  margin-top: auto; /* with form's margin-bottom: auto, centres card + form below the header */
   margin-bottom: 1.5rem;
 }
 
@@ -121,6 +115,24 @@ form {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  width: 100%;
+  max-width: 380px;
+  margin-bottom: auto;
+}
+
+/* AppHeader sits at the top-left on phones */
+.main > :deep(.app-header) {
+  align-self: flex-start;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 1.5rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
 }
 
 .fields {

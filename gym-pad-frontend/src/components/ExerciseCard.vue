@@ -123,8 +123,8 @@ function onCardClick() {
 
 .check {
     flex-shrink: 0;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 2rem;
+    height: 2rem;
     display: grid;
     place-items: center;
     padding: 0;
@@ -154,13 +154,16 @@ function onCardClick() {
 
 h3 {
     flex: 1;
+    min-width: 0;
     margin: 0;
+    overflow-wrap: anywhere;
     font-size: 1.15rem;
     transition: color 0.2s;
 }
 
 .card-actions {
     display: flex;
+    flex-shrink: 0;
     gap: 0.25rem;
 }
 
@@ -187,6 +190,20 @@ dd {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 700;
+}
+
+@media (max-width: 480px) {
+    .top {
+        gap: 0.5rem;
+    }
+
+    .stats div {
+        padding: 0.4rem 0.6rem;
+    }
+
+    dd {
+        font-size: 1.1rem;
+    }
 }
 
 dd small {

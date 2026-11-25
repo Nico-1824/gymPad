@@ -92,4 +92,10 @@ function onSubmit() {
     justify-content: flex-end;
     gap: 0.5rem;
 }
+
+@media (max-width: 480px) {
+    .actions .btn {
+        flex: 1;
+    }
+}
 </style>

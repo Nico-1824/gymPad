@@ -217,14 +217,15 @@ watch(() => props.id, loadWorkout, { immediate: true })
 
 .toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .toolbar h2 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: clamp(1.25rem, 5vw, 1.5rem);
     overflow-wrap: anywhere;
 }
 

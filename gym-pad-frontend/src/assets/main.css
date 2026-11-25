@@ -10,6 +10,15 @@ body {
   padding: 0;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg); /* matches the page so iOS overscroll doesn't flash white */
+}
+
 /* ---------- Theme (change these to re-theme the app) ---------- */
 :root {
   --accent: #fea755;
@@ -36,11 +45,18 @@ body {
   position: relative;
   background: var(--bg);
   min-height: 100vh;
+  min-height: 100dvh; /* iOS: excludes the Safari toolbar */
   display: flex;
-  align-items: center;
-  padding: 2rem 1rem;
+  flex-direction: column;
+  /* Keep content clear of the notch / home indicator */
+  padding:
+    max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(1.5rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
 }
 
+/* Phones/tablets: content starts at the top under the header */
 .page-column {
   display: flex;
   flex-direction: column;
@@ -48,6 +64,18 @@ body {
   width: 100%;
   max-width: 500px;
   margin: 0 auto;
+}
+
+/* Wide screens: content centred in the page like before */
+@media (min-width: 1200px) {
+  .page {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+
+  .page-column {
+    margin: auto;
+  }
 }
 
 /* ---------- Surfaces ---------- */
@@ -111,11 +139,26 @@ body {
   color: var(--danger);
 }
 
+/* Touch screens: at least ~44px tall tap targets (Apple's guideline) */
+@media (pointer: coarse) {
+  .btn {
+    min-height: 2.75rem;
+  }
+
+  .btn-ghost {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
 /* ---------- Inputs ---------- */
 .text-input {
   width: 100%;
+  min-width: 0;
   padding: 0.6rem 0.85rem;
   font: inherit;
+  font-size: max(1rem, 16px); /* below 16px iOS zooms in when you tap the field */
   border: 1px solid var(--border);
   border-radius: 8px;
   outline: none;
@@ -160,6 +203,17 @@ body {
 .state-card {
   text-align: center;
   padding: 2rem 1.5rem;
+}
+
+/* ---------- Small phones ---------- */
+@media (max-width: 480px) {
+  .surface {
+    padding: 1rem;
+  }
+
+  .state-card {
+    padding: 1.5rem 1rem;
+  }
 }
 
 .state-card h2 {

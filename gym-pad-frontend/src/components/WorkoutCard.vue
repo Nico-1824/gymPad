@@ -58,9 +58,11 @@ const emit = defineEmits<{
     transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.workout-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+@media (hover: hover) {
+    .workout-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+    }
 }
 
 .top {
@@ -75,19 +77,28 @@ a {
     text-decoration: none;
 }
 
+.title {
+    flex: 1;
+    min-width: 0;
+}
+
 .title h2 {
     margin: 0;
+    overflow-wrap: anywhere;
     font-size: 1.25rem;
 }
 
-.title:hover h2 {
-    text-decoration: underline;
-    text-decoration-color: var(--accent);
-    text-underline-offset: 3px;
+@media (hover: hover) {
+    .title:hover h2 {
+        text-decoration: underline;
+        text-decoration-color: var(--accent);
+        text-underline-offset: 3px;
+    }
 }
 
 .card-actions {
     display: flex;
+    flex-shrink: 0;
     gap: 0.25rem;
 }
 
