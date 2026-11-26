@@ -61,7 +61,7 @@ const showInstallHint = !notificationsSupported()
         </div>
 
         <p v-if="showInstallHint" class="hint">
-            Tip: add GymPad to your Home Screen to get an alert when your rest ends.
+            Tip: add GymPad to your Home Screen by clicking share and clicking App to Home page to get an alert when your rest ends.
         </p>
     </section>
 
