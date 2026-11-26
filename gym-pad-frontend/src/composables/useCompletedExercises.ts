@@ -1,33 +1,35 @@
 import { ref, watch, type Ref } from 'vue'
 
-// Tracks which exercises are marked done in today's session.
-// Saved in localStorage per workout *per day*, so it survives a refresh
-// but starts fresh the next time you do the workout.
-
 const PREFIX = 'gympad:done:'
-const today = () => new Date().toLocaleDateString('en-CA') // YYYY-MM-DD, local time
+const YYYY_MM_DD_LOCALE = 'en-CA'
+const todayInLocalTime = () => new Date().toLocaleDateString(YYYY_MM_DD_LOCALE)
 
 export function useCompletedExercises(workoutId: Ref<number | null>) {
     const doneIds = ref(new Set<number>())
 
-    const storageKey = () => `${PREFIX}${workoutId.value}:${today()}`
+    const storageKey = () => `${PREFIX}${workoutId.value}:${todayInLocalTime()}`
 
-    function load() {
-        doneIds.value = new Set()
-        if (workoutId.value === null) return
-
-        // Clean up this workout's marks from previous days.
+    function removeMarksFromPreviousDays() {
         const workoutPrefix = `${PREFIX}${workoutId.value}:`
         for (const key of Object.keys(localStorage)) {
             if (key.startsWith(workoutPrefix) && key !== storageKey()) localStorage.removeItem(key)
         }
+    }
 
+    function readTodaysMarks(): Set<number> {
         try {
             const saved: unknown = JSON.parse(localStorage.getItem(storageKey()) ?? '[]')
-            if (Array.isArray(saved)) doneIds.value = new Set(saved.filter((id) => typeof id === 'number'))
+            return Array.isArray(saved) ? new Set(saved.filter((id) => typeof id === 'number')) : new Set()
         } catch {
-            // Corrupt entry: just start fresh.
+            return new Set()
         }
+    }
+
+    function load() {
+        doneIds.value = new Set()
+        if (workoutId.value === null) return
+        removeMarksFromPreviousDays()
+        doneIds.value = readTodaysMarks()
     }
 
     function update(next: Set<number>) {
@@ -46,8 +48,7 @@ export function useCompletedExercises(workoutId: Ref<number | null>) {
         update(next)
     }
 
-    /** Call when an exercise is deleted so it doesn't linger in storage. */
-    function forget(exerciseId: number) {
+    function forgetDeletedExercise(exerciseId: number) {
         if (!doneIds.value.has(exerciseId)) return
         const next = new Set(doneIds.value)
         next.delete(exerciseId)
@@ -60,5 +61,5 @@ export function useCompletedExercises(workoutId: Ref<number | null>) {
 
     watch(workoutId, load, { immediate: true })
 
-    return { isDone, toggle, forget, reset }
+    return { isDone, toggle, forgetDeletedExercise, reset }
 }

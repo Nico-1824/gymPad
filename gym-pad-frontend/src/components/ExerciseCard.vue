@@ -2,7 +2,6 @@
 import type { Exercise, ExerciseInput } from '@/types/workout'
 import ExerciseForm from '@/components/ExerciseForm.vue'
 
-// The parent page decides which card is being edited / done and does the saving.
 const props = defineProps<{
     exercise: Exercise
     editing: boolean
@@ -18,10 +17,9 @@ const emit = defineEmits<{
     delete: []
 }>()
 
-const show = (value: number | null) => value ?? '—'
+const showDashIfEmpty = (value: number | null) => value ?? '—'
 
-// Tapping anywhere on the card toggles done (except while editing).
-function onCardClick() {
+function onCardTap() {
     if (!props.editing) emit('toggle')
 }
 </script>
@@ -30,7 +28,7 @@ function onCardClick() {
     <article
         class="exercise-card surface"
         :class="{ done: done && !editing, tappable: !editing }"
-        @click="onCardClick"
+        @click="onCardTap"
     >
         <ExerciseForm
             v-if="editing"
@@ -43,7 +41,6 @@ function onCardClick() {
 
         <template v-else>
             <div class="top">
-                <!-- The real (keyboard / screen reader) control; the whole card is a tap shortcut. -->
                 <button
                     type="button"
                     class="check"
@@ -71,15 +68,15 @@ function onCardClick() {
             <dl class="stats">
                 <div>
                     <dt>Weight</dt>
-                    <dd>{{ show(exercise.weight) }}<small v-if="exercise.weight !== null"> lbs</small></dd>
+                    <dd>{{ showDashIfEmpty(exercise.weight) }}<small v-if="exercise.weight !== null"> lbs</small></dd>
                 </div>
                 <div>
                     <dt>Reps</dt>
-                    <dd>{{ show(exercise.reps) }}</dd>
+                    <dd>{{ showDashIfEmpty(exercise.reps) }}</dd>
                 </div>
                 <div>
                     <dt>Sets</dt>
-                    <dd>{{ show(exercise.sets) }}</dd>
+                    <dd>{{ showDashIfEmpty(exercise.sets) }}</dd>
                 </div>
             </dl>
         </template>

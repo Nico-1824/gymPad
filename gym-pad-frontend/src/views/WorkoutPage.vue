@@ -8,36 +8,33 @@ import ExerciseForm from '@/components/ExerciseForm.vue'
 import { useCompletedExercises } from '@/composables/useCompletedExercises'
 import { useRestTimer, DEFAULT_REST_SECONDS } from '@/composables/useRestTimer'
 
-// Route param from /workouts/:id (passed in as a prop by the router)
 const props = defineProps<{ id: string }>()
+const workoutIdFromUrl = () => props.id
 
 const workout = ref<Workout | null>(null)
 const loading = ref(true)
 const loadError = ref('')
 
-// Add / edit / delete state
 const adding = ref(false)
 const editingId = ref<number | null>(null)
 const saving = ref(false)
 const actionError = ref('')
 
-// Done marks for today's session (stored in the browser, not the database)
-const { isDone, toggle, forget, reset } = useCompletedExercises(
+const { isDone, toggle, forgetDeletedExercise, reset } = useCompletedExercises(
     computed(() => workout.value?.workout_id ?? null),
 )
 const totalCount = computed(() => workout.value?.exercises.length ?? 0)
 const doneCount = computed(() => workout.value?.exercises.filter((e) => isDone(e.exercise_id)).length ?? 0)
 const allDone = computed(() => totalCount.value > 0 && doneCount.value === totalCount.value)
 
-// Rest timer: checking an exercise off starts a rest, unless that was the last one.
 const restTimer = useRestTimer()
 
-function onToggle(exerciseId: number, name: string) {
-    const nowDone = !isDone(exerciseId)
+function toggleDone(exerciseId: number, name: string) {
+    const justCheckedOff = !isDone(exerciseId)
     toggle(exerciseId)
-    if (!nowDone) return // un-checking doesn't touch the timer
-    if (allDone.value) restTimer.cancel() // workout finished, no rest needed
-    else restTimer.start(DEFAULT_REST_SECONDS, `${name} done`)
+    if (!justCheckedOff) return
+    if (allDone.value) restTimer.cancel()
+    else restTimer.startFromTap(DEFAULT_REST_SECONDS, `${name} done`)
 }
 
 async function loadWorkout() {
@@ -106,7 +103,7 @@ async function onDelete(exerciseId: number, name: string) {
     try {
         await deleteExercise(exerciseId)
         workout.value.exercises = workout.value.exercises.filter((e) => e.exercise_id !== exerciseId)
-        forget(exerciseId)
+        forgetDeletedExercise(exerciseId)
     } catch (err) {
         actionError.value = `Couldn't delete exercise: ${errorMessage(err)}`
     } finally {
@@ -114,8 +111,7 @@ async function onDelete(exerciseId: number, name: string) {
     }
 }
 
-// Load on first visit and whenever the URL's id changes.
-watch(() => props.id, loadWorkout, { immediate: true })
+watch(workoutIdFromUrl, loadWorkout, { immediate: true })
 </script>
 
 <template>
@@ -200,7 +196,7 @@ watch(() => props.id, loadWorkout, { immediate: true })
                     :editing="editingId === ex.exercise_id"
                     :done="isDone(ex.exercise_id)"
                     :busy="saving"
-                    @toggle="onToggle(ex.exercise_id, ex.name)"
+                    @toggle="toggleDone(ex.exercise_id, ex.name)"
                     @edit="startEditing(ex.exercise_id)"
                     @cancel="editingId = null"
                     @save="onSave(ex.exercise_id, $event)"

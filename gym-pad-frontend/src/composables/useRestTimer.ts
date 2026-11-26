@@ -1,156 +1,182 @@
 import { computed, ref } from 'vue'
-import { beep, requestNotificationPermission, showNotification, unlockAudio, vibrate } from '@/util/alerts'
-
-// One rest timer for the whole app (module-level state), so it keeps running
-// when you leave the workout page. Saved to localStorage so a refresh doesn't lose it.
+import {
+    beep,
+    notifyInBackground,
+    requestNotificationPermissionFromTap,
+    unlockAudioFromTap,
+    vibrate,
+} from '@/util/alerts'
 
 export const DEFAULT_REST_SECONDS = 90
 const MIN_REMAINING_SECONDS = 5
+const SHOW_REST_OVER_AFTER_RELOAD_WITHIN_MS = 10 * 60 * 1000
+const REST_OVER_MESSAGE_VISIBLE_MS = 10_000
+const DISPLAY_REFRESH_MS = 250
 const STORAGE_KEY = 'gympad:rest-timer'
 
-type SavedTimer = { endsAt: number; duration: number; label: string }
+type SavedRest = { endsAtMs: number; totalSeconds: number; label: string }
 
-const endsAt = ref<number | null>(null) // timestamp (ms) when the rest ends
-const duration = ref(0) // total seconds, for the progress ring
-const label = ref('') // e.g. "Bench Press done"
-const minimized = ref(false) // "Hide": still running, shown as a small pill
-const finished = ref(false) // ran out without being cancelled
-const now = ref(Date.now())
+const endsAtMs = ref<number | null>(null)
+const totalSeconds = ref(0)
+const label = ref('')
+const minimizedToPill = ref(false)
+const finished = ref(false)
+const nowMs = ref(Date.now())
 
-let tickTimer: number | undefined
-let endTimer: number | undefined
-let dismissTimer: number | undefined
+let displayRefreshInterval: number | undefined
+let restEndTimeout: number | undefined
+let hideRestOverMessageTimeout: number | undefined
 
-const remaining = computed(() =>
-    endsAt.value === null ? 0 : Math.max(0, Math.ceil((endsAt.value - now.value) / 1000)),
+const remainingSeconds = computed(() =>
+    endsAtMs.value === null ? 0 : Math.max(0, Math.ceil((endsAtMs.value - nowMs.value) / 1000)),
 )
-const running = computed(() => endsAt.value !== null && !finished.value)
-/** 0 → 1 as the rest goes by. */
-const progress = computed(() => (duration.value ? 1 - remaining.value / duration.value : 0))
+const running = computed(() => endsAtMs.value !== null && !finished.value)
+const elapsedFraction = computed(() => (totalSeconds.value ? 1 - remainingSeconds.value / totalSeconds.value : 0))
 
 function stopClocks() {
-    window.clearInterval(tickTimer)
-    window.clearTimeout(endTimer)
+    window.clearInterval(displayRefreshInterval)
+    window.clearTimeout(restEndTimeout)
 }
 
-function save() {
-    if (endsAt.value === null) {
+function saveRest() {
+    if (endsAtMs.value === null) {
         localStorage.removeItem(STORAGE_KEY)
         return
     }
-    const saved: SavedTimer = { endsAt: endsAt.value, duration: duration.value, label: label.value }
+    const saved: SavedRest = { endsAtMs: endsAtMs.value, totalSeconds: totalSeconds.value, label: label.value }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
 }
 
 function startClocks() {
     stopClocks()
-    if (endsAt.value === null) return
-    now.value = Date.now()
-    tickTimer = window.setInterval(() => (now.value = Date.now()), 250) // updates the display
-    endTimer = window.setTimeout(finish, Math.max(0, endsAt.value - Date.now())) // fires once at the end
+    if (endsAtMs.value === null) return
+    nowMs.value = Date.now()
+    displayRefreshInterval = window.setInterval(() => (nowMs.value = Date.now()), DISPLAY_REFRESH_MS)
+    restEndTimeout = window.setTimeout(finish, Math.max(0, endsAtMs.value - Date.now()))
+}
+
+function showRestOverMessage() {
+    stopClocks()
+    nowMs.value = Date.now()
+    finished.value = true
+    minimizedToPill.value = false
+    localStorage.removeItem(STORAGE_KEY)
+    window.clearTimeout(hideRestOverMessageTimeout)
+    hideRestOverMessageTimeout = window.setTimeout(dismiss, REST_OVER_MESSAGE_VISIBLE_MS)
+}
+
+function alertUserRestIsOver() {
+    const appIsOnScreen = document.visibilityState === 'visible'
+    if (appIsOnScreen) {
+        beep()
+        vibrate()
+        return
+    }
+    const body = label.value ? `${label.value} — time for your next set.` : 'Time for your next set.'
+    void notifyInBackground('Rest over 💪', body)
 }
 
 function finish() {
     if (!running.value) return
-    stopClocks()
-    now.value = Date.now()
-    finished.value = true
-    minimized.value = false
-    localStorage.removeItem(STORAGE_KEY)
-
-    if (document.visibilityState === 'visible') {
-        // App is on screen: beep + the in-app "Rest over" message is enough.
-        beep()
-        vibrate()
-    } else {
-        void showNotification('Rest over 💪', label.value ? `${label.value} — time for your next set.` : 'Time for your next set.')
-    }
-
-    // The "Rest over" message clears itself after a while.
-    window.clearTimeout(dismissTimer)
-    dismissTimer = window.setTimeout(dismiss, 10_000)
+    showRestOverMessage()
+    alertUserRestIsOver()
 }
 
-/** Start (or restart) a rest. Call from a tap handler so permission + audio can be unlocked. */
-function start(seconds = DEFAULT_REST_SECONDS, text = '') {
-    unlockAudio()
-    requestNotificationPermission()
-    window.clearTimeout(dismissTimer)
+function startFromTap(seconds = DEFAULT_REST_SECONDS, text = '') {
+    unlockAudioFromTap()
+    requestNotificationPermissionFromTap()
+    window.clearTimeout(hideRestOverMessageTimeout)
 
-    endsAt.value = Date.now() + seconds * 1000
-    duration.value = seconds
+    endsAtMs.value = Date.now() + seconds * 1000
+    totalSeconds.value = seconds
     label.value = text
     finished.value = false
-    minimized.value = false
-    save()
+    minimizedToPill.value = false
+    saveRest()
     startClocks()
 }
 
-/** Stop the rest early. No notification is sent. */
-function cancel() {
+function cancelWithoutAlert() {
     stopClocks()
-    window.clearTimeout(dismissTimer)
-    endsAt.value = null
+    window.clearTimeout(hideRestOverMessageTimeout)
+    endsAtMs.value = null
     finished.value = false
-    minimized.value = false
-    save()
+    minimizedToPill.value = false
+    saveRest()
 }
 
-/** Add or remove time from the current rest (e.g. +15 / -15). */
-function adjust(seconds: number) {
-    if (!running.value || endsAt.value === null) return
-    const minEnd = Date.now() + MIN_REMAINING_SECONDS * 1000
-    endsAt.value = Math.max(endsAt.value + seconds * 1000, minEnd)
-    duration.value = Math.max(duration.value + seconds, Math.ceil((endsAt.value - Date.now()) / 1000))
-    save()
+function addSeconds(seconds: number) {
+    if (!running.value || endsAtMs.value === null) return
+    const earliestAllowedEnd = Date.now() + MIN_REMAINING_SECONDS * 1000
+    endsAtMs.value = Math.max(endsAtMs.value + seconds * 1000, earliestAllowedEnd)
+    totalSeconds.value = Math.max(totalSeconds.value + seconds, Math.ceil((endsAtMs.value - Date.now()) / 1000))
+    saveRest()
     startClocks()
 }
 
-/** Clear the "Rest over" message. */
 function dismiss() {
-    window.clearTimeout(dismissTimer)
-    endsAt.value = null
+    window.clearTimeout(hideRestOverMessageTimeout)
+    endsAtMs.value = null
     finished.value = false
 }
 
-function restore() {
+function isSavedRest(value: unknown): value is SavedRest {
+    if (typeof value !== 'object' || value === null) return false
+    const saved = value as Record<string, unknown>
+    return (
+        typeof saved.endsAtMs === 'number' &&
+        typeof saved.totalSeconds === 'number' &&
+        saved.totalSeconds > 0 &&
+        typeof saved.label === 'string'
+    )
+}
+
+function readSavedRest(): SavedRest | null {
     try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as SavedTimer | null
-        if (saved && typeof saved.endsAt === 'number' && saved.endsAt > Date.now()) {
-            endsAt.value = saved.endsAt
-            duration.value = saved.duration
-            label.value = saved.label ?? ''
-            startClocks()
-        } else {
-            localStorage.removeItem(STORAGE_KEY)
-        }
+        const saved: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
+        return isSavedRest(saved) ? saved : null
     } catch {
-        localStorage.removeItem(STORAGE_KEY)
+        return null
     }
 }
 
-// Phones pause timers in the background. When the app comes back, catch up.
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible' || !running.value || endsAt.value === null) return
-    now.value = Date.now()
-    if (endsAt.value <= Date.now()) finish()
-})
+function restoreSavedRest() {
+    const saved = readSavedRest()
+    const endedTooLongAgo = !saved || saved.endsAtMs <= Date.now() - SHOW_REST_OVER_AFTER_RELOAD_WITHIN_MS
+    if (endedTooLongAgo) {
+        localStorage.removeItem(STORAGE_KEY)
+        return
+    }
+    endsAtMs.value = saved.endsAtMs
+    totalSeconds.value = saved.totalSeconds
+    label.value = saved.label
+    const endedWhileAppWasClosed = saved.endsAtMs <= Date.now()
+    if (endedWhileAppWasClosed) showRestOverMessage()
+    else startClocks()
+}
 
-restore()
+function catchUpAfterBackground() {
+    if (document.visibilityState !== 'visible' || !running.value || endsAtMs.value === null) return
+    nowMs.value = Date.now()
+    if (endsAtMs.value <= Date.now()) finish()
+}
+
+document.addEventListener('visibilitychange', catchUpAfterBackground)
+restoreSavedRest()
 
 export function useRestTimer() {
     return {
-        remaining,
-        progress,
+        remainingSeconds,
+        elapsedFraction,
         running,
         finished,
-        minimized,
+        minimizedToPill,
         label,
-        start,
-        cancel,
-        adjust,
+        startFromTap,
+        cancel: cancelWithoutAlert,
+        addSeconds,
         dismiss,
-        hide: () => (minimized.value = true),
-        show: () => (minimized.value = false),
+        minimizeToPill: () => (minimizedToPill.value = true),
+        expandFromPill: () => (minimizedToPill.value = false),
     }
 }

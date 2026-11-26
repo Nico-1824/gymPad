@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRestTimer } from '@/composables/useRestTimer'
-import { notificationsSupported } from '@/util/alerts'
+import { needsHomeScreenInstall, userTurnedNotificationsOff } from '@/util/alerts'
 
 const timer = useRestTimer()
 
@@ -9,30 +9,32 @@ const RADIUS = 26
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 const time = computed(() => {
-    const s = timer.remaining.value
+    const s = timer.remainingSeconds.value
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 })
 
-// iPhone Safari only supports notifications once GymPad is added to the Home Screen.
-const showInstallHint = !notificationsSupported()
+function backgroundAlertHint(): string | null {
+    if (needsHomeScreenInstall())
+        return 'Tip: to get an alert when your rest ends, tap Share, then "Add to Home Screen", and open GymPad from there.'
+    if (userTurnedNotificationsOff())
+        return "Notifications are off for GymPad, so you won't get an alert when your rest ends. You can turn them on in your settings."
+    return null
+}
 </script>
 
 <template>
-    <!-- Finished: short "rest over" message -->
     <div v-if="timer.finished.value" class="rest-panel rest-done" role="status">
         <span class="done-text">Rest over — time for your next set 💪</span>
         <button type="button" class="btn btn-ghost" @click="timer.dismiss">Dismiss</button>
     </div>
 
-    <!-- Running + hidden: small pill in the corner -->
-    <div v-else-if="timer.running.value && timer.minimized.value" class="rest-pill">
-        <button type="button" class="pill-main" aria-label="Show rest timer" @click="timer.show">
+    <div v-else-if="timer.running.value && timer.minimizedToPill.value" class="rest-pill">
+        <button type="button" class="pill-main" aria-label="Show rest timer" @click="timer.expandFromPill">
             ⏱ <span class="pill-time">{{ time }}</span>
         </button>
         <button type="button" class="pill-cancel" aria-label="Cancel rest timer" @click="timer.cancel">×</button>
     </div>
 
-    <!-- Running: full timer -->
     <section v-else-if="timer.running.value" class="rest-panel" aria-label="Rest timer">
         <div class="rest-top">
             <svg class="ring" viewBox="0 0 60 60" aria-hidden="true">
@@ -43,7 +45,7 @@ const showInstallHint = !notificationsSupported()
                     cy="30"
                     :r="RADIUS"
                     :stroke-dasharray="CIRCUMFERENCE"
-                    :stroke-dashoffset="CIRCUMFERENCE * timer.progress.value"
+                    :stroke-dashoffset="CIRCUMFERENCE * timer.elapsedFraction.value"
                 />
             </svg>
             <div class="rest-info">
@@ -53,23 +55,22 @@ const showInstallHint = !notificationsSupported()
         </div>
 
         <div class="rest-actions">
-            <button type="button" class="btn btn-secondary" @click="timer.adjust(-15)">−15s</button>
-            <button type="button" class="btn btn-secondary" @click="timer.adjust(15)">+15s</button>
+            <button type="button" class="btn btn-secondary" @click="timer.addSeconds(-15)">−15s</button>
+            <button type="button" class="btn btn-secondary" @click="timer.addSeconds(15)">+15s</button>
             <span class="spacer"></span>
-            <button type="button" class="btn btn-ghost" @click="timer.hide">Hide</button>
+            <button type="button" class="btn btn-ghost" @click="timer.minimizeToPill">Hide</button>
             <button type="button" class="btn btn-primary" @click="timer.cancel">Skip</button>
         </div>
 
-        <p v-if="showInstallHint" class="hint">
-            Tip: add GymPad to your Home Screen to get an alert when your rest ends.
+        <p v-if="backgroundAlertHint()" class="hint">
+            {{ backgroundAlertHint() }}
         </p>
     </section>
 
-    <!-- Room at the bottom of the page so the timer never covers the last card -->
     <div
         v-if="timer.running.value || timer.finished.value"
-        class="timer-spacer"
-        :class="{ small: timer.minimized.value || timer.finished.value }"
+        class="keep-last-card-above-timer"
+        :class="{ small: timer.minimizedToPill.value || timer.finished.value }"
         aria-hidden="true"
     ></div>
 </template>
@@ -225,12 +226,12 @@ const showInstallHint = !notificationsSupported()
     opacity: 1;
 }
 
-.timer-spacer {
+.keep-last-card-above-timer {
     height: 10rem;
     background: var(--bg);
 }
 
-.timer-spacer.small {
+.keep-last-card-above-timer.small {
     height: 5rem;
 }
 </style>

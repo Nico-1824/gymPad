@@ -13,7 +13,7 @@ const router = createRouter({
       path: '/workouts/:id',
       name: 'workout',
       component: WorkoutPage,
-      props: true, // passes :id to WorkoutPage as a prop
+      props: true,
       meta: { requiresAuth: true },
     },
   ],

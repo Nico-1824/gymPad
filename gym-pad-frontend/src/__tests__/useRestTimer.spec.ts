@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// The timer is shared module state, so load a fresh copy for each test.
-async function freshTimer() {
+async function loadFreshTimer() {
     vi.resetModules()
     const alerts = await import('@/util/alerts')
     vi.spyOn(alerts, 'beep').mockImplementation(() => {})
     vi.spyOn(alerts, 'vibrate').mockImplementation(() => {})
-    vi.spyOn(alerts, 'unlockAudio').mockImplementation(() => {})
-    vi.spyOn(alerts, 'requestNotificationPermission').mockImplementation(() => {})
-    const notify = vi.spyOn(alerts, 'showNotification').mockResolvedValue()
+    vi.spyOn(alerts, 'unlockAudioFromTap').mockImplementation(() => {})
+    vi.spyOn(alerts, 'requestNotificationPermissionFromTap').mockImplementation(() => {})
+    const notify = vi.spyOn(alerts, 'notifyInBackground').mockResolvedValue()
     const { useRestTimer } = await import('@/composables/useRestTimer')
     return { timer: useRestTimer(), notify, beep: alerts.beep }
 }
@@ -26,13 +25,13 @@ describe('useRestTimer', () => {
     afterEach(() => vi.useRealTimers())
 
     it('counts down and finishes with a beep when the app is open', async () => {
-        const { timer, notify, beep } = await freshTimer()
-        timer.start(90, 'Bench done')
+        const { timer, notify, beep } = await loadFreshTimer()
+        timer.startFromTap(90, 'Bench done')
         expect(timer.running.value).toBe(true)
-        expect(timer.remaining.value).toBe(90)
+        expect(timer.remainingSeconds.value).toBe(90)
 
         vi.advanceTimersByTime(30_000)
-        expect(timer.remaining.value).toBe(60)
+        expect(timer.remainingSeconds.value).toBe(60)
 
         vi.advanceTimersByTime(60_000)
         expect(timer.finished.value).toBe(true)
@@ -42,26 +41,26 @@ describe('useRestTimer', () => {
     })
 
     it('sends a notification when the app is in the background', async () => {
-        const { timer, notify } = await freshTimer()
-        timer.start(10, 'Squat done')
+        const { timer, notify } = await loadFreshTimer()
+        timer.startFromTap(10, 'Squat done')
         setVisibility('hidden')
         vi.advanceTimersByTime(10_000)
         expect(notify).toHaveBeenCalledWith('Rest over 💪', 'Squat done — time for your next set.')
     })
 
     it('hide keeps it running and still notifies', async () => {
-        const { timer, notify } = await freshTimer()
-        timer.start(10)
-        timer.hide()
-        expect(timer.minimized.value).toBe(true)
+        const { timer, notify } = await loadFreshTimer()
+        timer.startFromTap(10)
+        timer.minimizeToPill()
+        expect(timer.minimizedToPill.value).toBe(true)
         setVisibility('hidden')
         vi.advanceTimersByTime(10_000)
         expect(notify).toHaveBeenCalledOnce()
     })
 
     it('cancel stops it and never notifies', async () => {
-        const { timer, notify, beep } = await freshTimer()
-        timer.start(10)
+        const { timer, notify, beep } = await loadFreshTimer()
+        timer.startFromTap(10)
         timer.cancel()
         setVisibility('hidden')
         vi.advanceTimersByTime(60_000)
@@ -72,20 +71,41 @@ describe('useRestTimer', () => {
     })
 
     it('adjust adds time and never goes below 5 seconds', async () => {
-        const { timer } = await freshTimer()
-        timer.start(30)
-        timer.adjust(15)
-        expect(timer.remaining.value).toBe(45)
-        timer.adjust(-100)
-        expect(timer.remaining.value).toBe(5)
+        const { timer } = await loadFreshTimer()
+        timer.startFromTap(30)
+        timer.addSeconds(15)
+        expect(timer.remainingSeconds.value).toBe(45)
+        timer.addSeconds(-100)
+        expect(timer.remainingSeconds.value).toBe(5)
     })
 
     it('survives a page refresh', async () => {
-        const first = await freshTimer()
-        first.timer.start(60)
+        const beforePageReload = await loadFreshTimer()
+        beforePageReload.timer.startFromTap(60)
         vi.advanceTimersByTime(20_000)
-        const second = await freshTimer() // simulates reloading the page
-        expect(second.timer.running.value).toBe(true)
-        expect(second.timer.remaining.value).toBe(40)
+        const afterPageReload = await loadFreshTimer()
+        expect(afterPageReload.timer.running.value).toBe(true)
+        expect(afterPageReload.timer.remainingSeconds.value).toBe(40)
+    })
+
+    it('shows "Rest over" after a reload if the rest ended while the app was closed', async () => {
+        const restEndedThirtySecondsAgo = { endsAtMs: Date.now() - 30_000, totalSeconds: 60, label: 'Row done' }
+        localStorage.setItem('gympad:rest-timer', JSON.stringify(restEndedThirtySecondsAgo))
+        const afterPageReload = await loadFreshTimer()
+        expect(afterPageReload.timer.finished.value).toBe(true)
+        expect(afterPageReload.timer.running.value).toBe(false)
+        expect(localStorage.getItem('gympad:rest-timer')).toBeNull()
+    })
+
+    it('drops a saved rest that ended long ago or is malformed', async () => {
+        localStorage.setItem('gympad:rest-timer', JSON.stringify({ endsAtMs: Date.now() - 60 * 60_000, totalSeconds: 60, label: '' }))
+        const old = await loadFreshTimer()
+        expect(old.timer.finished.value).toBe(false)
+        expect(old.timer.running.value).toBe(false)
+
+        localStorage.setItem('gympad:rest-timer', JSON.stringify({ endsAtMs: Date.now() + 30_000, label: 'x' }))
+        const bad = await loadFreshTimer()
+        expect(bad.timer.running.value).toBe(false)
+        expect(localStorage.getItem('gympad:rest-timer')).toBeNull()
     })
 })

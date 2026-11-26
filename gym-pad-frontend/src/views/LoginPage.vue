@@ -26,18 +26,17 @@ async function login() {
   router.push('/')
 }
 
+function requiredFieldsFilled(): boolean {
+  return form.value?.reportValidity() ?? false
+}
+
 async function signUp() {
   errorMsg.value = ''
-  // The Sign up button isn't a submit button, so the browser doesn't check the
-  // required fields for us. Without this, empty fields reach Supabase and come
-  // back as "Anonymous sign-ins are disabled".
-  if (!form.value?.reportValidity()) return
+  if (!requiredFieldsFilled()) return
 
   const { error } = await supabase.auth.signUp({
     email: email.value,
     password: password.value,
-    // Send the confirmation link back to whichever site you signed up on
-    // (localhost or Vercel). That URL must be in Supabase's Redirect URLs list.
     options: { emailRedirectTo: window.location.origin },
   })
   errorMsg.value = error ? error.message : 'Check your email to confirm your account.'

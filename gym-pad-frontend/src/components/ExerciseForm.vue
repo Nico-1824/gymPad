@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import type { ExerciseInput } from '@/types/workout'
 
-// Name + sets/reps/weight + Save/Cancel. Used to add and edit exercises.
 const props = defineProps<{
     initial?: ExerciseInput
     submitLabel: string
@@ -14,13 +13,14 @@ const emit = defineEmits<{
     cancel: []
 }>()
 
-// v-model.number gives '' when a number field is cleared, so allow that here.
-const name = ref(props.initial?.name ?? '')
-const sets = ref<number | ''>(props.initial?.sets ?? '')
-const reps = ref<number | ''>(props.initial?.reps ?? '')
-const weight = ref<number | ''>(props.initial?.weight ?? '')
+type NumberOrCleared = number | ''
 
-const toNullable = (value: number | '') => (value === '' ? null : value)
+const name = ref(props.initial?.name ?? '')
+const sets = ref<NumberOrCleared>(props.initial?.sets ?? '')
+const reps = ref<NumberOrCleared>(props.initial?.reps ?? '')
+const weight = ref<NumberOrCleared>(props.initial?.weight ?? '')
+
+const toNullable = (value: NumberOrCleared) => (value === '' ? null : value)
 
 function onSubmit() {
     const trimmed = name.value.trim()
