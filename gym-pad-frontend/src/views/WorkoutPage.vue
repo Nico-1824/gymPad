@@ -6,6 +6,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import ExerciseCard from '@/components/ExerciseCard.vue'
 import ExerciseForm from '@/components/ExerciseForm.vue'
 import { useCompletedExercises } from '@/composables/useCompletedExercises'
+import { useRestTimer, DEFAULT_REST_SECONDS } from '@/composables/useRestTimer'
 
 // Route param from /workouts/:id (passed in as a prop by the router)
 const props = defineProps<{ id: string }>()
@@ -27,6 +28,17 @@ const { isDone, toggle, forget, reset } = useCompletedExercises(
 const totalCount = computed(() => workout.value?.exercises.length ?? 0)
 const doneCount = computed(() => workout.value?.exercises.filter((e) => isDone(e.exercise_id)).length ?? 0)
 const allDone = computed(() => totalCount.value > 0 && doneCount.value === totalCount.value)
+
+// Rest timer: checking an exercise off starts a rest, unless that was the last one.
+const restTimer = useRestTimer()
+
+function onToggle(exerciseId: number, name: string) {
+    const nowDone = !isDone(exerciseId)
+    toggle(exerciseId)
+    if (!nowDone) return // un-checking doesn't touch the timer
+    if (allDone.value) restTimer.cancel() // workout finished, no rest needed
+    else restTimer.start(DEFAULT_REST_SECONDS, `${name} done`)
+}
 
 async function loadWorkout() {
     loading.value = true
@@ -188,7 +200,7 @@ watch(() => props.id, loadWorkout, { immediate: true })
                     :editing="editingId === ex.exercise_id"
                     :done="isDone(ex.exercise_id)"
                     :busy="saving"
-                    @toggle="toggle(ex.exercise_id)"
+                    @toggle="onToggle(ex.exercise_id, ex.name)"
                     @edit="startEditing(ex.exercise_id)"
                     @cancel="editingId = null"
                     @save="onSave(ex.exercise_id, $event)"
