@@ -6,7 +6,6 @@ export type Exercise = {
     weight: number | null;
 }
 
-/** Fields the user can set when adding or editing an exercise. */
 export type ExerciseInput = Omit<Exercise, 'exercise_id'>
 
 export type Workout = {

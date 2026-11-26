@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { Workout } from '@/types/workout'
-import { listWorkouts, createWorkout, renameWorkout, deleteWorkout, errorMessage } from '@/api/workouts'
+import { listWorkouts, createWorkout, renameWorkout, deleteWorkoutAndItsExercises, errorMessage } from '@/api/workouts'
 import AppHeader from '@/components/AppHeader.vue'
 import WorkoutCard from '@/components/WorkoutCard.vue'
 import NameForm from '@/components/NameForm.vue'
@@ -10,7 +10,6 @@ const workouts = ref<Workout[]>([])
 const loading = ref(true)
 const loadError = ref('')
 
-// Add / edit / delete state
 const adding = ref(false)
 const editingId = ref<number | null>(null)
 const saving = ref(false)
@@ -75,7 +74,7 @@ async function onDelete(workout: Workout) {
     saving.value = true
     actionError.value = ''
     try {
-        await deleteWorkout(workout.workout_id)
+        await deleteWorkoutAndItsExercises(workout.workout_id)
         workouts.value = workouts.value.filter((w) => w.workout_id !== workout.workout_id)
     } catch (err) {
         actionError.value = `Couldn't delete workout: ${errorMessage(err)}`

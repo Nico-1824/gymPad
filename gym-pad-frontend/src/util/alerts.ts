@@ -1,39 +1,54 @@
-// Ways to get the user's attention when a rest timer ends:
-// a system notification (when the app is in the background), a beep and a vibration.
-
-/** True when this browser can show notifications through our service worker. */
-export function notificationsSupported(): boolean {
+export function canNotify(): boolean {
     return 'Notification' in window && 'serviceWorker' in navigator
 }
 
-/**
- * Ask for notification permission (only asks once; the browser remembers the answer).
- * Must be called from a tap/click handler or iOS ignores it.
- */
-export function requestNotificationPermission(): void {
-    if (!notificationsSupported() || Notification.permission !== 'default') return
+export function requestNotificationPermissionFromTap(): void {
+    if (!canNotify()) return
+    const browserRemembersEarlierAnswer = Notification.permission !== 'default'
+    if (browserRemembersEarlierAnswer) return
     Notification.requestPermission().catch(() => {})
 }
 
-export async function showNotification(title: string, body: string): Promise<void> {
-    if (!notificationsSupported() || Notification.permission !== 'granted') return
-    try {
-        const registration = await navigator.serviceWorker.getRegistration()
-        const options: NotificationOptions = { body, icon: '/icons/icon-192.png', tag: 'rest-timer' }
-        if (registration) await registration.showNotification(title, options)
-        else new Notification(title, options)
-    } catch {
-        // Notifications are a nice-to-have; never let them break the app.
-    }
+export function userTurnedNotificationsOff(): boolean {
+    return canNotify() && Notification.permission === 'denied'
 }
 
-// ---------- Sound ----------
-// Browsers (especially iOS) only allow audio after a user gesture,
-// so unlockAudio() is called when the timer starts (from the tap).
+function isAppleMobileDevice(): boolean {
+    const iPadOsPretendingToBeAMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) || iPadOsPretendingToBeAMac
+}
+
+function isOpenedFromHomeScreen(): boolean {
+    const legacyIosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true
+    return window.matchMedia?.('(display-mode: standalone)').matches || legacyIosStandalone
+}
+
+export function needsHomeScreenInstall(): boolean {
+    return isAppleMobileDevice() && !isOpenedFromHomeScreen()
+}
+
+export async function notifyInBackground(title: string, body: string): Promise<void> {
+    if (!canNotify() || Notification.permission !== 'granted') return
+    const options: NotificationOptions = { body, icon: '/icons/icon-192.png', tag: 'rest-timer' }
+    try {
+        const registration = await navigator.serviceWorker.getRegistration()
+        if (registration) await registration.showNotification(title, options)
+        else new Notification(title, options)
+    } catch {}
+}
+
+const BEEP_COUNT = 3
+const BEEP_SPACING_S = 0.3
+const BEEP_FREQUENCY_HZ = 880
+const BEEP_VOLUME = 0.3
+const SILENT_VOLUME = 0.0001
+const BEEP_FADE_IN_S = 0.02
+const BEEP_FADE_OUT_AT_S = 0.2
+const BEEP_STOP_AT_S = 0.22
 
 let audio: AudioContext | null = null
 
-export function unlockAudio(): void {
+export function unlockAudioFromTap(): void {
     try {
         audio ??= new AudioContext()
         if (audio.state === 'suspended') void audio.resume()
@@ -42,24 +57,36 @@ export function unlockAudio(): void {
     }
 }
 
-/** Three short beeps. */
+function resumeAudioThenBeep(ctx: AudioContext) {
+    ctx.resume()
+        .then(() => {
+            if (ctx.state === 'running') playBeeps(ctx)
+        })
+        .catch(() => {})
+    document.addEventListener('pointerdown', unlockAudioFromTap, { once: true })
+}
+
 export function beep(): void {
     if (!audio) return
-    const start = audio.currentTime
-    for (let i = 0; i < 3; i++) {
-        const osc = audio.createOscillator()
-        const gain = audio.createGain()
-        osc.frequency.value = 880
-        gain.gain.setValueAtTime(0.0001, start + i * 0.3)
-        gain.gain.exponentialRampToValueAtTime(0.3, start + i * 0.3 + 0.02)
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + i * 0.3 + 0.2)
-        osc.connect(gain).connect(audio.destination)
-        osc.start(start + i * 0.3)
-        osc.stop(start + i * 0.3 + 0.22)
+    if (audio.state === 'running') playBeeps(audio)
+    else resumeAudioThenBeep(audio)
+}
+
+function playBeeps(ctx: AudioContext): void {
+    for (let i = 0; i < BEEP_COUNT; i++) {
+        const beepStart = ctx.currentTime + i * BEEP_SPACING_S
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.frequency.value = BEEP_FREQUENCY_HZ
+        gain.gain.setValueAtTime(SILENT_VOLUME, beepStart)
+        gain.gain.exponentialRampToValueAtTime(BEEP_VOLUME, beepStart + BEEP_FADE_IN_S)
+        gain.gain.exponentialRampToValueAtTime(SILENT_VOLUME, beepStart + BEEP_FADE_OUT_AT_S)
+        osc.connect(gain).connect(ctx.destination)
+        osc.start(beepStart)
+        osc.stop(beepStart + BEEP_STOP_AT_S)
     }
 }
 
-/** Vibrate where supported (Android; iPhone ignores this). */
 export function vibrate(): void {
     navigator.vibrate?.([200, 100, 200])
 }

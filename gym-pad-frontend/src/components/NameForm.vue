@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-// Single text field + Save/Cancel. Used to add and rename workouts.
 const props = defineProps<{
     initial?: string
     placeholder: string

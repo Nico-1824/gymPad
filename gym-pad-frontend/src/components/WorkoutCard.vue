@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Workout } from '@/types/workout'
 import NameForm from '@/components/NameForm.vue'
 
-// The dashboard decides which card is being renamed and does the saving.
-defineProps<{
+const props = defineProps<{
     workout: Workout
     editing: boolean
     busy?: boolean
@@ -15,6 +15,8 @@ const emit = defineEmits<{
     rename: [name: string]
     delete: []
 }>()
+
+const hasExercises = computed(() => props.workout.exercises.length > 0)
 </script>
 
 <template>
@@ -31,19 +33,20 @@ const emit = defineEmits<{
         <template v-else>
             <div class="top">
                 <h2>
-                    <!-- One link; its ::after layer stretches over the whole card -->
-                    <RouterLink :to="{ name: 'workout', params: { id: workout.workout_id } }" class="title">
+                    <RouterLink
+                        :to="{ name: 'workout', params: { id: workout.workout_id } }"
+                        class="stretched-link"
+                    >
                         {{ workout.workout_name }}
                     </RouterLink>
                 </h2>
-                <!-- Buttons drop to the bottom only when the workout has exercises -->
-                <div class="card-actions" :class="{ 'at-bottom': workout.exercises.length > 0 }">
+                <div class="card-actions" :class="{ 'at-bottom': hasExercises }">
                     <button type="button" class="btn btn-ghost" :disabled="busy" @click="emit('edit')">Edit</button>
                     <button type="button" class="btn btn-ghost danger" :disabled="busy" @click="emit('delete')">
                         Delete
                     </button>
                 </div>
-                <p v-if="workout.exercises.length === 0" class="summary">No exercises yet. Tap to add some →</p>
+                <p v-if="!hasExercises" class="summary">No exercises yet. Tap to add some →</p>
             </div>
         </template>
     </article>
@@ -87,7 +90,7 @@ h2 {
 }
 
 /* Stretched link: an invisible layer over the whole card, so a tap anywhere opens the workout */
-.title::after {
+.stretched-link::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -95,17 +98,17 @@ h2 {
 }
 
 /* Keyboard users see the whole card outlined when the link is focused */
-.title:focus-visible {
+.stretched-link:focus-visible {
     outline: none;
 }
 
-.workout-card:has(.title:focus-visible) {
+.workout-card:has(.stretched-link:focus-visible) {
     outline: 3px solid var(--accent);
     outline-offset: 2px;
 }
 
 @media (hover: hover) {
-    .workout-card:hover .title {
+    .workout-card:hover .stretched-link {
         text-decoration: underline;
         text-decoration-color: var(--accent);
         text-underline-offset: 3px;

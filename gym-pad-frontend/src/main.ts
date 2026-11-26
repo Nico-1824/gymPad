@@ -9,9 +9,11 @@ app.use(router)
 
 app.mount('#app')
 
-// Service worker: lets the app show notifications (e.g. when a rest timer ends).
-if ('serviceWorker' in navigator) {
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {})
   })
 }
+
+registerServiceWorker()

@@ -1,13 +1,8 @@
 import { supabase } from '@/util/supabase'
 import type { Exercise, ExerciseInput, Workout } from '@/types/workout'
 
-// Every query below throws the Supabase error on failure, so pages can use try/catch.
-// Row-level security limits all of these to the signed-in user's own rows.
-
 const EXERCISE_COLUMNS = 'exercise_id, name, sets, reps, weight'
 const WORKOUT_COLUMNS = `workout_id, workout_name, exercises(${EXERCISE_COLUMNS})`
-
-/* ---------- Workouts ---------- */
 
 export async function listWorkouts(): Promise<Workout[]> {
     const { data, error } = await supabase
@@ -19,7 +14,6 @@ export async function listWorkouts(): Promise<Workout[]> {
     return data
 }
 
-/** Returns null if the workout doesn't exist (or belongs to someone else). */
 export async function getWorkout(workoutId: number): Promise<Workout | null> {
     const { data, error } = await supabase
         .from('workouts')
@@ -32,10 +26,10 @@ export async function getWorkout(workoutId: number): Promise<Workout | null> {
 }
 
 export async function createWorkout(name: string): Promise<Workout> {
-    // user_id defaults to auth.uid() in the database, so we only send the name.
+    const userIdIsFilledInByDatabaseDefault = { workout_name: name }
     const { data, error } = await supabase
         .from('workouts')
-        .insert({ workout_name: name })
+        .insert(userIdIsFilledInByDatabaseDefault)
         .select(WORKOUT_COLUMNS)
         .single()
     if (error) throw error
@@ -50,13 +44,10 @@ export async function renameWorkout(workoutId: number, name: string): Promise<vo
     if (error) throw error
 }
 
-/** Also deletes the workout's exercises (ON DELETE CASCADE). */
-export async function deleteWorkout(workoutId: number): Promise<void> {
+export async function deleteWorkoutAndItsExercises(workoutId: number): Promise<void> {
     const { error } = await supabase.from('workouts').delete().eq('workout_id', workoutId)
     if (error) throw error
 }
-
-/* ---------- Exercises ---------- */
 
 export async function createExercise(workoutId: number, input: ExerciseInput): Promise<Exercise> {
     const { data, error } = await supabase
@@ -84,7 +75,6 @@ export async function deleteExercise(exerciseId: number): Promise<void> {
     if (error) throw error
 }
 
-/** Turns anything thrown by the functions above into a readable message. */
 export function errorMessage(err: unknown): string {
     if (err && typeof err === 'object' && 'message' in err) return String(err.message)
     return 'Something went wrong.'
