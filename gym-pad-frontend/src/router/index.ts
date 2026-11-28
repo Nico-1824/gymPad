@@ -3,6 +3,7 @@ import { supabase } from '@/util/supabase'
 import LoginPage from '@/views/LoginPage.vue'
 import DashboardPage from '@/views/DashboardPage.vue'
 import WorkoutPage from '@/views/WorkoutPage.vue'
+import SettingsPage from '@/views/SettingsPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,6 +17,7 @@ const router = createRouter({
       props: true,
       meta: { requiresAuth: true },
     },
+    { path: '/settings', name: 'settings', component: SettingsPage, meta: { requiresAuth: true } },
   ],
 })
 
