@@ -12,6 +12,10 @@ async function loadFromDatabase() {
     }
 }
 
+function resetToDefaults() {
+    preferences.value = { ...DEFAULT_PREFERENCES }
+}
+
 async function update(changes: Partial<Preferences>) {
     const previous = preferences.value
     preferences.value = { ...previous, ...changes }
@@ -24,5 +28,5 @@ async function update(changes: Partial<Preferences>) {
 }
 
 export function usePreferences() {
-    return { preferences: readonly(preferences), loadFromDatabase, update }
+    return { preferences: readonly(preferences), loadFromDatabase, resetToDefaults, update }
 }
