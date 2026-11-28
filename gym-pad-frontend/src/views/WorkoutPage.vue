@@ -7,6 +7,7 @@ import ExerciseCard from '@/components/ExerciseCard.vue'
 import ExerciseForm from '@/components/ExerciseForm.vue'
 import { useCompletedExercises } from '@/composables/useCompletedExercises'
 import { useRestTimer, DEFAULT_REST_SECONDS } from '@/composables/useRestTimer'
+import { usePreferences } from '@/composables/usePreferences'
 
 const props = defineProps<{ id: string }>()
 const workoutIdFromUrl = () => props.id
@@ -28,13 +29,14 @@ const doneCount = computed(() => workout.value?.exercises.filter((e) => isDone(e
 const allDone = computed(() => totalCount.value > 0 && doneCount.value === totalCount.value)
 
 const restTimer = useRestTimer()
+const { preferences } = usePreferences()
 
 function toggleDone(exerciseId: number, name: string) {
     const justCheckedOff = !isDone(exerciseId)
     toggle(exerciseId)
     if (!justCheckedOff) return
     if (allDone.value) restTimer.cancel()
-    else restTimer.startFromTap(DEFAULT_REST_SECONDS, `${name} done`)
+    else if (preferences.value.show_rest_timer) restTimer.startFromTap(DEFAULT_REST_SECONDS, `${name} done`)
 }
 
 async function loadWorkout() {
