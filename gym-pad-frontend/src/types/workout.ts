@@ -1,8 +1,8 @@
 export type Exercise = {
     exercise_id: number;
     name: string;
-    sets: number | null;
-    reps: number | null;
+    sets: number;
+    reps: number;
     weight: number | null;
 }
 

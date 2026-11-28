@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { ExerciseInput, Workout } from '@/types/workout'
+import type { Exercise, ExerciseInput, Workout } from '@/types/workout'
 import { getWorkout, createExercise, updateExercise, deleteExercise, errorMessage } from '@/api/workouts'
 import AppHeader from '@/components/AppHeader.vue'
 import ExerciseCard from '@/components/ExerciseCard.vue'
 import ExerciseForm from '@/components/ExerciseForm.vue'
-import { useCompletedExercises } from '@/composables/useCompletedExercises'
+import { useSetProgress } from '@/composables/useSetProgress'
 import { useRestTimer, DEFAULT_REST_SECONDS } from '@/composables/useRestTimer'
 import { usePreferences } from '@/composables/usePreferences'
 
@@ -21,22 +21,40 @@ const editingId = ref<number | null>(null)
 const saving = ref(false)
 const actionError = ref('')
 
-const { isDone, toggle, forgetDeletedExercise, reset } = useCompletedExercises(
+const { setsDone, isDone, setSetsDone, logSet, finish, clear, forgetDeletedExercise, reset } = useSetProgress(
     computed(() => workout.value?.workout_id ?? null),
 )
 const totalCount = computed(() => workout.value?.exercises.length ?? 0)
-const doneCount = computed(() => workout.value?.exercises.filter((e) => isDone(e.exercise_id)).length ?? 0)
+const doneCount = computed(() => workout.value?.exercises.filter(isDone).length ?? 0)
 const allDone = computed(() => totalCount.value > 0 && doneCount.value === totalCount.value)
 
 const restTimer = useRestTimer()
 const { preferences } = usePreferences()
 
-function toggleDone(exerciseId: number, name: string) {
-    const justCheckedOff = !isDone(exerciseId)
-    toggle(exerciseId)
-    if (!justCheckedOff) return
-    if (allDone.value) restTimer.cancel()
-    else if (preferences.value.show_rest_timer) restTimer.startFromTap(DEFAULT_REST_SECONDS, `${name} done`)
+function restAfterProgress(exercise: Exercise) {
+    if (allDone.value) return restTimer.cancel()
+    if (!preferences.value.show_rest_timer) return
+    const label = isDone(exercise)
+        ? `${exercise.name} done`
+        : `${exercise.name}: set ${setsDone(exercise)}/${exercise.sets} done`
+    restTimer.startFromTap(DEFAULT_REST_SECONDS, label)
+}
+
+function onLogSet(exercise: Exercise) {
+    logSet(exercise)
+    restAfterProgress(exercise)
+}
+
+function onSetSetsDone(exercise: Exercise, count: number) {
+    const loggedMore = count > setsDone(exercise)
+    setSetsDone(exercise, count)
+    if (loggedMore) restAfterProgress(exercise)
+}
+
+function onToggleFinished(exercise: Exercise) {
+    if (isDone(exercise)) return clear(exercise)
+    finish(exercise)
+    restAfterProgress(exercise)
 }
 
 async function loadWorkout() {
@@ -157,7 +175,7 @@ watch(workoutIdFromUrl, loadWorkout, { immediate: true })
                 <div v-if="totalCount > 0" class="progress" :class="{ complete: allDone }">
                     <div class="progress-text">
                         <span v-if="allDone">Workout complete! 🎉</span>
-                        <span v-else>{{ (doneCount / totalCount * 100).toFixed(0) }}% Done · Tap an exercise to check it off...</span>
+                        <span v-else>{{ (doneCount / totalCount * 100).toFixed(0) }}% Done · Tap to log a set · swipe → when done</span>
                         <button v-if="doneCount > 0" type="button" class="btn btn-ghost" @click="reset">
                             Reset
                         </button>
@@ -196,9 +214,11 @@ watch(workoutIdFromUrl, loadWorkout, { immediate: true })
                     :key="ex.exercise_id"
                     :exercise="ex"
                     :editing="editingId === ex.exercise_id"
-                    :done="isDone(ex.exercise_id)"
+                    :sets-done="setsDone(ex)"
                     :busy="saving"
-                    @toggle="toggleDone(ex.exercise_id, ex.name)"
+                    @log-set="onLogSet(ex)"
+                    @set-sets-done="onSetSetsDone(ex, $event)"
+                    @toggle-finished="onToggleFinished(ex)"
                     @edit="startEditing(ex.exercise_id)"
                     @cancel="editingId = null"
                     @save="onSave(ex.exercise_id, $event)"

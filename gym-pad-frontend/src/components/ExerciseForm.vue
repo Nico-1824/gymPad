@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { ExerciseInput } from '@/types/workout'
+import { MAX_REPS, MAX_SETS, MAX_WEIGHT, MIN_REPS, MIN_SETS } from '@/util/exerciseLimits'
 
 const props = defineProps<{
     initial?: ExerciseInput
@@ -24,11 +25,11 @@ const toNullable = (value: NumberOrCleared) => (value === '' ? null : value)
 
 function onSubmit() {
     const trimmed = name.value.trim()
-    if (!trimmed) return
+    if (!trimmed || sets.value === '' || reps.value === '') return
     emit('submit', {
         name: trimmed,
-        sets: toNullable(sets.value),
-        reps: toNullable(reps.value),
+        sets: sets.value,
+        reps: reps.value,
         weight: toNullable(weight.value),
     })
 }
@@ -48,15 +49,15 @@ function onSubmit() {
         <div class="numbers">
             <label>
                 <span>Sets</span>
-                <input v-model.number="sets" class="text-input" type="number" min="0" max="999" step="1" />
+                <input v-model.number="sets" class="text-input" type="number" :min="MIN_SETS" :max="MAX_SETS" step="1" required />
             </label>
             <label>
                 <span>Reps</span>
-                <input v-model.number="reps" class="text-input" type="number" min="0" max="999" step="1" />
+                <input v-model.number="reps" class="text-input" type="number" :min="MIN_REPS" :max="MAX_REPS" step="1" required />
             </label>
             <label>
                 <span>Weight (lbs)</span>
-                <input v-model.number="weight" class="text-input" type="number" min="0" max="9999" step="1" />
+                <input v-model.number="weight" class="text-input" type="number" min="0" :max="MAX_WEIGHT" step="1" />
             </label>
         </div>
         <div class="actions">

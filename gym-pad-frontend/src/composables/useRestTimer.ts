@@ -6,13 +6,14 @@ import {
     unlockAudioFromTap,
     vibrate,
 } from '@/util/alerts'
+import { APP_STORAGE_PREFIX } from '@/util/appStorage'
 
 export const DEFAULT_REST_SECONDS = 90
 const MIN_REMAINING_SECONDS = 5
 const SHOW_REST_OVER_AFTER_RELOAD_WITHIN_MS = 10 * 60 * 1000
 const REST_OVER_MESSAGE_VISIBLE_MS = 10_000
 const DISPLAY_REFRESH_MS = 250
-const STORAGE_KEY = 'gympad:rest-timer'
+const STORAGE_KEY = `${APP_STORAGE_PREFIX}rest-timer`
 
 type SavedRest = { endsAtMs: number; totalSeconds: number; label: string }
 
